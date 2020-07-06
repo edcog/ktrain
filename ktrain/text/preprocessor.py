@@ -275,7 +275,8 @@ def hf_convert_example(text_a, text_b=None, tokenizer=None,
         text_b,
         add_special_tokens=True,
         return_token_type_ids=True,
-        max_length=max_length,
+        max_length=max_length, 
+        truncation='longest_first'
     )
     input_ids, token_type_ids = inputs["input_ids"], inputs["token_type_ids"]
 
@@ -493,7 +494,7 @@ class TextPreprocessor(Preprocessor):
                 print("\t%s : %s" % (k, int(round(stat_dict[k]))))
 
 
-    def _transform_y(self, y_data):
+    def _transform_y(self, y_data, verbose=1):
         """
         preprocess y
         If shape of y is 1, then task is considered classification if self.c exists
@@ -504,9 +505,10 @@ class TextPreprocessor(Preprocessor):
 
         # check for errors and warnings
         if not isinstance(y_data[0], str) and len(y_data.shape) ==1 and not self.get_classes():
-            warnings.warn('Task is being treated as TEXT REGRESSION because ' +\
-                          'class_names argument was not supplied. ' + \
-                          'If this is incorrect, supply class_names argument.')
+            if verbose:
+                warnings.warn('Task is being treated as TEXT REGRESSION because ' +\
+                              'class_names argument was not supplied. ' + \
+                              'If this is incorrect, supply class_names argument.')
         elif len(y_data.shape) > 1 and not self.get_classes():
             raise ValueError('y-values are 1-hot or multi-hot encoded but self.get_classes() is empty. ' +\
                              'The classes argument should have been supplied.')
@@ -594,7 +596,7 @@ class StandardTextPreprocessor(TextPreprocessor):
         U.vprint('x_train shape: ({},{})'.format(x_train.shape[0], x_train.shape[1]), verbose=verbose)
 
         # transform y
-        y_train = self._transform_y(y_train)
+        y_train = self._transform_y(y_train, verbose=verbose)
         if y_train is not None and verbose:
             print('y_train shape: %s' % (y_train.shape,))
 
@@ -630,7 +632,7 @@ class StandardTextPreprocessor(TextPreprocessor):
         U.vprint('x_test shape: ({},{})'.format(x_test.shape[0], x_test.shape[1]), verbose=verbose)
 
         # transform y
-        y_test = self._transform_y(y_test)
+        y_test = self._transform_y(y_test, verbose=verbose)
         if y_test is not None and verbose:
             print('y_test shape: %s' % (y_test.shape,))
 
@@ -767,7 +769,7 @@ class BERTPreprocessor(TextPreprocessor):
         x = bert_tokenize(texts, self.tok, self.maxlen, verbose=verbose)
 
         # transform y
-        y = self._transform_y(y)
+        y = self._transform_y(y, verbose=verbose)
         result = (x, y)
         self.set_multilabel(result, mode)
         if mode == 'train': self.preprocess_train_called = True
@@ -835,10 +837,29 @@ class TransformersPreprocessor(TextPreprocessor):
         if not hasattr(self, 'tok'): self.tok = None
 
 
-    def get_preprocessor(self):
+    def get_tokenizer(self, fpath=None):
+        model_name = self.model_name if fpath is None else fpath
         if self.tok is None:
-            self.tok = self.tokenizer_type.from_pretrained(self.model_name)
-        return (self.tok, self.tok_dct)
+            self.tok = self.tokenizer_type.from_pretrained(model_name)
+        return self.tok
+
+
+    def save_tokenizer(self, fpath):
+        if os.path.isfile(fpath):
+            raise ValueError(f'There is an existing file named {fpath}. ' +\
+                              'Please use dfferent value for fpath.')
+        elif os.path.exists(fpath):
+            pass
+        elif not os.path.exists(fpath):
+            os.makedirs(fpath)
+        tok =self.get_tokenizer()
+        tok.save_pretrained(fpath)
+        return
+
+
+
+    def get_preprocessor(self):
+        return (self.get_tokenizer(), self.tok_dct)
 
 
 
@@ -881,7 +902,7 @@ class TransformersPreprocessor(TextPreprocessor):
             raise ValueError('y is required for training sets')
         elif y is None:
             y = np.array([1] * len(texts))
-        y = self._transform_y(y)
+        y = self._transform_y(y, verbose=verbose)
 
         # convert examples
         tok, _ = self.get_preprocessor()
@@ -919,15 +940,16 @@ class TransformersPreprocessor(TextPreprocessor):
 
 
 
-    def get_classifier(self, fpath=None, multilabel=None):
+    def get_classifier(self, fpath=None, multilabel=None, metrics=['accuracy']):
         """
-        creates a model for classification
+        creates a model for text classification
         Args:
           fpath(str): optional path to saved pretrained model. Typically left as None.
           multilabel(bool): If None, multilabel status is discovered from data [recommended].
                             If True, model will be forcibly configured for multilabel task.
                             If False, model will be forcibly configured for non-multilabel task.
                             It is recommended to leave this as None.
+          metrics(list): metrics to use
         """
         self.check_trained()
         if not self.get_classes():
@@ -953,11 +975,17 @@ class TransformersPreprocessor(TextPreprocessor):
             loss_fn = keras.losses.CategoricalCrossentropy(from_logits=True)
         model.compile(loss=loss_fn,
                       optimizer=U.DEFAULT_OPT,
-                      metrics=['accuracy'])
+                      metrics=metrics)
         return model
 
 
-    def get_regression_model(self, fpath=None):
+    def get_regression_model(self, fpath=None, metrics=['mae']):
+        """
+        creates a model for text regression
+        Args:
+          fpath(str): optional path to saved pretrained model. Typically left as None.
+          metrics(list): metrics to use
+        """
         self.check_trained()
         if self.get_classes():
             warnings.warn('class labels were provided - treating as classification problem')
@@ -968,7 +996,7 @@ class TransformersPreprocessor(TextPreprocessor):
         loss_fn = 'mse'
         model.compile(loss=loss_fn,
                       optimizer=U.DEFAULT_OPT,
-                      metrics=['mae'])
+                      metrics=metrics)
         return model
 
 

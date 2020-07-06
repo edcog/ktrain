@@ -6,6 +6,99 @@ Most recent releases are shown at the top. Each release shows:
 - **Changed**: Additional parameters, changes to inputs or outputs, etc
 - **Fixed**: Bug fixes that don't change documented behaviour
 
+## 0.17.5 (2020-07-02)
+
+### New:
+- N/A
+
+### Changed
+- N/A
+
+### Fixed:
+- Explicitly supply `'truncate='longest_first'` to prevent sentence pair classification from breaking in `transformers==3.0.0`
+- Fixed typo in `encode_plus` invocation
+
+
+## 0.17.4 (2020-07-02)
+
+### New:
+- N/A
+
+### Changed
+- N/A
+
+### Fixed:
+- Explicitly supply `'truncate='longest_first'` to prevent sentence pair classification from breaking in `transformers==3.0.0`
+
+
+
+## 0.17.3 (2020-06-26)
+
+### New:
+- N/A
+
+### Changed
+- N/A
+
+### Fixed:
+- Changed `setup.py` to open README file using `encoding="utf-8"` to prevent installation problems on Windows machines with `cp1252` encoding
+
+
+## 0.17.2 (2020-06-25)
+
+### New:
+- Added support for Russian in `text.EnglishTranslator`
+
+### Changed
+- N/A
+
+### Fixed:
+- N/A
+
+## 0.17.1 (2020-06-24)
+
+### New:
+- N/A
+
+### Changed
+- N/A
+
+### Fixed:
+- Properly set device in `text.Translator` and use cuda when available
+
+
+## 0.17.0 (2020-06-24)
+
+### New:
+- support for language translation using pretraiend `MarianMT` models
+- added `core.evaluate` as alias to `core.validate`
+- `Learner.estimate_lr` method will return numerical estimates of learning rate using two different methods.
+   Should only be called **after** running `Learner.lr_find`.
+
+### Changed
+- `text.zsl.ZeroShotClassifier` changed to use `AutoModel*` and `AutoTokenizer` in order to load any `mlni` model
+- remove external modules from `ktrain.__init__.py` so that they do not appear when pressing TAB in notebook
+- added `Transformer.save_tokenizer` and `Transformer.get_tokenizer` methods to facilitate training on machines
+  with no internet
+
+### Fixed:
+- explicitly call `plt.show()` in `LRFinder.plot_loss` to resolved issues with plot not displaying in certain cases (PR #170)
+- suppress warning about text regression when making text regression predictions
+- allow `xnli` models for `zsl` module
+
+
+## 0.16.3 (2020-06-10)
+
+### New:
+- added `metrics` parameter to `text.text_classifier` and `text.text_regression_model` functions
+- added `metrics` parameter to `Transformer.get_classifier` and `Transformer.get_regrssion_model` methods
+
+### Changed
+- `metric` parameter in `vision.image_classifier` and `vision.image_regression_model` functions changed to `metrics`
+
+### Fixed:
+- N/A
+
 
 ## 0.16.2 (2020-06-07)
 
